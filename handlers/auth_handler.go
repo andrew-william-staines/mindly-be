@@ -67,6 +67,42 @@ func RegisteHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "User registered successfully"})
 }
 
+func PasswordHandler (w http.ResponseWriter, r *http.Request) {
+	var password models.Password
+	err := json.NewDecoder(r.Body).Decode(&password)
+	if(err != nil) {
+		http.Error(w, `{"message" : "Invalid Request Body"}`, http.StatusBadRequest)
+		return
+	}
+
+	db := config.ConnectDB()
+	defer db.Close()
+
+	if err := utils.VerifyOTP(db, password.Email, password.OTP); err != nil {
+		if err.Error() == "user not found" {
+			http.Error(w, `{"message": "User Not Found"}`, http.StatusUnauthorized)
+		} else {
+			http.Error(w, `{"message": "Incorrect Verification Code"}`, http.StatusUnauthorized)
+		}
+		return
+	}
+
+	hashPwd, err := utils.HashPassword(password.Password)
+	if err != nil {
+		http.Error(w, `{"message": "Failed to hash password"}`, http.StatusInternalServerError)
+		return
+	}
+
+	_, err = db.Exec("UPDATE users SET password=$1 WHERE email=$2", hashPwd, password.Email)
+	if err != nil {
+		http.Error(w, `{"message": "Error updating password"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"message": "Password reset successful"}`))
+}
+
 func LoginHandler (w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)

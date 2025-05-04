@@ -12,3 +12,9 @@ type User struct {
 	Password  string    `json:"password"`
 	CreatedAt time.Time `json:"created_at"`
 }
+
+type Password struct {
+	Email     string    `json:"email"`
+	OTP 	  string 	`json:"otp"`
+	Password  string 	`json:"newPassword"`
+}
